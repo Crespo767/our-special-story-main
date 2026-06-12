@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Home, Loader2 } from "lucide-react";
 
 import avatarMain from "../../../Avatares/Avatar.png";
 import avatarOne from "../../../Avatares/Avatar 1.png";
@@ -81,27 +81,39 @@ const frames: Frame[] = [
 ];
 
 const messageBlocks = messageText
-  .split(/\r?\n(?:\s*---+\s*|\s*\r?\n)+/g)
+  .split(/\r?\n\s*---+\s*\r?\n/g)
   .map((block) => block.trim())
   .filter(Boolean);
 
-const frameCount = Math.max(frames.length, messageBlocks.length);
+const frameCount = messageBlocks.length > 0 ? messageBlocks.length : frames.length;
+
+function stripMarkdownBold(text: string) {
+  return text.replace(/\*\*/g, "");
+}
+
+function removeBlockLabel(lines: string[]) {
+  const firstLine = stripMarkdownBold(lines[0] ?? "").trim();
+  return /^bloco\s+\d+$/i.test(firstLine) ? lines.slice(1) : lines;
+}
 
 const storyFrames = Array.from({ length: frameCount }, (_, index) => {
   const frame = frames[index % frames.length];
   const block = messageBlocks[index];
   if (!block) return frame;
 
-  const lines = block
-    .split(/\r?\n/g)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const lines = removeBlockLabel(
+    block
+      .split(/\r?\n/g)
+      .map((line) => line.trim())
+      .filter(Boolean),
+  );
   const [firstLine, ...rest] = lines;
+  const title = firstLine ? stripMarkdownBold(firstLine) : `Mensagem ${index + 1}`;
 
   return {
     ...frame,
-    title: rest.length > 0 ? firstLine : `Mensagem ${index + 1}`,
-    message: rest.length > 0 ? rest.join("\n\n") : firstLine,
+    title,
+    message: rest.length > 0 ? rest.join("\n\n") : title,
   };
 });
 
@@ -121,6 +133,8 @@ export default function App() {
   const [activeFrame, setActiveFrame] = useState(0);
   const [started, setStarted] = useState(false);
   const [introLoading, setIntroLoading] = useState(false);
+  const isFirstFrame = activeFrame === 0;
+  const isLastFrame = activeFrame === storyFrames.length - 1;
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -148,12 +162,17 @@ export default function App() {
 
   function showPreviousFrame() {
     setStarted(true);
-    setActiveFrame((current) => (current - 1 + storyFrames.length) % storyFrames.length);
+    setActiveFrame((current) => Math.max(current - 1, 0));
   }
 
   function showNextFrame() {
     setStarted(true);
-    setActiveFrame((current) => (current + 1) % storyFrames.length);
+    setActiveFrame((current) => Math.min(current + 1, storyFrames.length - 1));
+  }
+
+  function returnToStart() {
+    setStarted(true);
+    setActiveFrame(0);
   }
 
   const currentFrame = storyFrames[activeFrame];
@@ -195,15 +214,30 @@ export default function App() {
 
       <div className="story-page-bg absolute inset-0" />
 
-      <section className="story-stage relative z-10 flex min-h-screen items-center justify-center px-4 pb-36 pt-16 sm:pb-44">
+      {started && isLastFrame && (
         <button
-          onClick={showPreviousFrame}
-          className="absolute left-4 z-20 hidden h-12 w-12 items-center justify-center rounded-md border border-[#f9c784]/25 bg-black/25 text-[#fff8ef] backdrop-blur-sm transition hover:bg-black/40 md:flex"
-          aria-label="Imagem anterior"
-          title="Imagem anterior"
+          type="button"
+          onClick={returnToStart}
+          className="absolute right-4 top-4 z-30 inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[#f9c784]/35 bg-black/30 px-4 text-sm font-bold text-[#fff8ef] backdrop-blur-sm transition hover:bg-black/45"
+          aria-label="Voltar ao inicio"
+          title="Voltar ao inicio"
         >
-          <ChevronLeft className="h-7 w-7" />
+          <Home className="h-4 w-4" />
+          Voltar ao inicio
         </button>
+      )}
+
+      <section className="story-stage relative z-10 flex min-h-screen items-center justify-center px-4 pb-36 pt-16 sm:pb-44">
+        {!isFirstFrame && (
+          <button
+            onClick={showPreviousFrame}
+            className="absolute left-4 z-20 hidden h-12 w-12 items-center justify-center rounded-md border border-[#f9c784]/25 bg-black/25 text-[#fff8ef] backdrop-blur-sm transition hover:bg-black/40 md:flex"
+            aria-label="Imagem anterior"
+            title="Imagem anterior"
+          >
+            <ChevronLeft className="h-7 w-7" />
+          </button>
+        )}
 
         <div className="story-layout w-full max-w-7xl">
           <div className="story-main-frame story-scene relative overflow-hidden rounded-2xl border border-[#f9c784]/55 shadow-[0_24px_80px_rgba(52,26,14,0.28)]">
@@ -223,18 +257,20 @@ export default function App() {
           <aside className="story-text-panel">
             <p className="story-text-kicker">Para você</p>
             <h2>{currentFrame.title}</h2>
-            <p>{currentFrame.message}</p>
+            <p>{renderMessage(currentFrame.message)}</p>
           </aside>
         </div>
 
-        <button
-          onClick={showNextFrame}
-          className="absolute right-4 z-20 hidden h-12 w-12 items-center justify-center rounded-md border border-[#f9c784]/25 bg-black/25 text-[#fff8ef] backdrop-blur-sm transition hover:bg-black/40 md:flex"
-          aria-label="Proxima imagem"
-          title="Proxima imagem"
-        >
-          <ChevronRight className="h-7 w-7" />
-        </button>
+        {!isLastFrame && (
+          <button
+            onClick={showNextFrame}
+            className="absolute right-4 z-20 hidden h-12 w-12 items-center justify-center rounded-md border border-[#f9c784]/25 bg-black/25 text-[#fff8ef] backdrop-blur-sm transition hover:bg-black/40 md:flex"
+            aria-label="Proxima imagem"
+            title="Proxima imagem"
+          >
+            <ChevronRight className="h-7 w-7" />
+          </button>
+        )}
       </section>
 
       <HerFilmStrip />
@@ -243,6 +279,25 @@ export default function App() {
 }
 
 export { App as SurpriseApp };
+
+function renderMessage(text: string) {
+  return text.split("\n").map((line, lineIndex) => (
+    <Fragment key={`${line}-${lineIndex}`}>
+      {lineIndex > 0 && <br />}
+      {renderInlineBold(line)}
+    </Fragment>
+  ));
+}
+
+function renderInlineBold(text: string) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={`${part}-${index}`}>{part.slice(2, -2)}</strong>;
+    }
+
+    return <Fragment key={`${part}-${index}`}>{part}</Fragment>;
+  });
+}
 
 function HerFilmStrip() {
   const strip = [...herFrames, ...herFrames];
@@ -262,4 +317,3 @@ function HerFilmStrip() {
     </div>
   );
 }
-
