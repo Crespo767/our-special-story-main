@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 
 import avatarMain from "../../../Avatares/Avatar.png";
 import avatarOne from "../../../Avatares/Avatar 1.png";
@@ -7,215 +7,259 @@ import avatarTwo from "../../../Avatares/Avatar 2.png";
 import avatarThree from "../../../Avatares/Avatar 3.png";
 import avatarFour from "../../../Avatares/Avatar 4.png";
 import dogAvatar from "../../../Avatares/Cachorro sem fundo.png";
+import dogAvatarOne from "../../../Avatares/Cachorro limpo 1.png";
+import dogAvatarTwo from "../../../Avatares/Cachorro limpo 2.png";
+import dogAvatarThree from "../../../Avatares/Cachorro limpo 3.png";
+import dogAvatarFour from "../../../Avatares/Cachorro limpo 4.png";
+import herAvatarMain from "../../../AvataresDela/Avatar dela.png";
+import herAvatarOne from "../../../AvataresDela/Avatar dela 1.png";
+import herAvatarTwo from "../../../AvataresDela/Avatar dela 2.png";
+import herAvatarThree from "../../../AvataresDela/Avatar dela 3.png";
+import herAvatarFour from "../../../AvataresDela/Avatar dela 4.png";
+import herAvatarFive from "../../../AvataresDela/Avatar dela 5.png";
+import herAvatarSix from "../../../AvataresDela/Avatar dela 6.png";
+import herAvatarSeven from "../../../AvataresDela/Avatar dela 7.png";
 import soundtrack from "../../../Music/aerosmith_sem_27_segundos_iniciais.mp3";
-import storyTextRaw from "../../../Texto/texto.txt?raw";
+import messageText from "../../../Mensagem/Mensagens.txt?raw";
 
 type Frame = {
   image: string;
+  dogImage: string;
   title: string;
-  paragraphs: string[];
+  message: string;
 };
 
-type ExperienceState = "intro" | "loading" | "story";
+const frames: Frame[] = [
+  {
+    image: avatarMain,
+    dogImage: dogAvatar,
+    title: "Eu fiz isso pensando em você.",
+    message: "Cada imagem aqui é um pedacinho do carinho que eu queria te mostrar.",
+  },
+  {
+    image: avatarOne,
+    dogImage: dogAvatarOne,
+    title: "Você deixa tudo mais bonito.",
+    message: "Até os momentos simples ficam especiais quando têm você no meio.",
+  },
+  {
+    image: avatarTwo,
+    dogImage: dogAvatarTwo,
+    title: "Eu guardo nossos detalhes.",
+    message: "As conversas, as risadas, os jeitos e tudo que só a gente entende.",
+  },
+  {
+    image: avatarThree,
+    dogImage: dogAvatarThree,
+    title: "Tem coisa que vira lar.",
+    message: "E estar perto de você virou uma dessas coisas para mim.",
+  },
+  {
+    image: avatarFour,
+    dogImage: dogAvatarFour,
+    title: "Eu escolheria você de novo.",
+    message: "Em qualquer versão da história, em qualquer quadro, em qualquer dia.",
+  },
+  {
+    image: avatarOne,
+    dogImage: dogAvatar,
+    title: "Não quero perder nenhum detalhe.",
+    message: "Por isso essa música, essa surpresa e esse jeito de te lembrar.",
+  },
+  {
+    image: avatarThree,
+    dogImage: dogAvatarTwo,
+    title: "Ainda tem muito para viver.",
+    message: "Que venham mais capítulos, mais planos e mais motivos para sorrir.",
+  },
+  {
+    image: avatarMain,
+    dogImage: dogAvatarFour,
+    title: "Esse é só o começo.",
+    message: "O resto da história eu quero continuar escrevendo com você.",
+  },
+];
 
-const avatarFrames = [avatarMain, avatarOne, avatarTwo, avatarThree, avatarFour];
+const messageBlocks = messageText
+  .split(/\r?\n(?:\s*---+\s*|\s*\r?\n)+/g)
+  .map((block) => block.trim())
+  .filter(Boolean);
 
-function parseStoryBlocks(text: string): Frame[] {
-  return text
-    .split(/\n---\n/g)
-    .map((block, index) => {
-      const lines = block
-        .trim()
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean);
-      const rawTitle = lines[0] ?? `Bloco ${index + 1}`;
-      return {
-        image: avatarFrames[index % avatarFrames.length],
-        title: rawTitle.replace(/\*\*/g, ""),
-        paragraphs: lines.slice(1),
-      };
-    })
-    .filter((frame) => frame.paragraphs.length > 0);
-}
+const frameCount = Math.max(frames.length, messageBlocks.length);
+
+const storyFrames = Array.from({ length: frameCount }, (_, index) => {
+  const frame = frames[index % frames.length];
+  const block = messageBlocks[index];
+  if (!block) return frame;
+
+  const lines = block
+    .split(/\r?\n/g)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const [firstLine, ...rest] = lines;
+
+  return {
+    ...frame,
+    title: rest.length > 0 ? firstLine : `Mensagem ${index + 1}`,
+    message: rest.length > 0 ? rest.join("\n\n") : firstLine,
+  };
+});
+
+const herFrames = [
+  herAvatarMain,
+  herAvatarOne,
+  herAvatarTwo,
+  herAvatarThree,
+  herAvatarFour,
+  herAvatarFive,
+  herAvatarSix,
+  herAvatarSeven,
+];
 
 export default function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [activeFrame, setActiveFrame] = useState(0);
-  const [experienceState, setExperienceState] = useState<ExperienceState>("intro");
-  const frames = useMemo(() => parseStoryBlocks(storyTextRaw), []);
+  const [started, setStarted] = useState(false);
+  const [introLoading, setIntroLoading] = useState(false);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    audio.volume = 0.62;
+    audio.volume = 0.28;
   }, []);
 
   async function startExperience() {
-    setActiveFrame(0);
-    setExperienceState("loading");
+    if (introLoading || started) return;
+    setIntroLoading(true);
     const audio = audioRef.current;
     if (audio) {
+      audio.currentTime = 0;
       try {
-        audio.currentTime = 0;
         await audio.play();
       } catch {
-        // The story still starts if the browser blocks audio for any reason.
+        // Browser autoplay rules can still reject playback in unusual contexts.
       }
     }
-
-    window.setTimeout(() => setExperienceState("story"), 3000);
+    window.setTimeout(() => {
+      setStarted(true);
+      setIntroLoading(false);
+    }, 3000);
   }
 
   function showPreviousFrame() {
-    setActiveFrame((current) => Math.max(current - 1, 0));
+    setStarted(true);
+    setActiveFrame((current) => (current - 1 + storyFrames.length) % storyFrames.length);
   }
 
   function showNextFrame() {
-    setActiveFrame((current) => Math.min(current + 1, frames.length - 1));
+    setStarted(true);
+    setActiveFrame((current) => (current + 1) % storyFrames.length);
   }
 
-  function returnToStart() {
-    const audio = audioRef.current;
-    if (audio) {
-      audio.pause();
-      audio.currentTime = 0;
-    }
-    setActiveFrame(0);
-    setExperienceState("intro");
-  }
-
-  const currentFrame = frames[activeFrame];
-  const isFirstFrame = activeFrame === 0;
-  const isLastFrame = activeFrame === frames.length - 1;
+  const currentFrame = storyFrames[activeFrame];
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-[#111111] text-[#fff8ef]">
-      <audio ref={audioRef} src={soundtrack} loop preload="auto" />
+    <main className="relative min-h-screen overflow-hidden bg-[#120d0a] text-[#fff8ef]">
+      <audio
+        ref={audioRef}
+        src={soundtrack}
+        loop
+      />
 
-      {experienceState === "intro" && <IntroScreen onStart={startExperience} />}
-
-      {experienceState === "loading" && <LoadingScreen />}
-
-      {experienceState === "story" && currentFrame && (
-        <section className="relative z-10 flex min-h-screen items-center justify-center px-4 pb-24 pt-20 sm:px-6 lg:px-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_34%_40%,rgba(249,199,132,0.2),transparent_32%),linear-gradient(135deg,#120d0a_0%,#21120d_48%,#0b1012_100%)]" />
-
-          {isLastFrame && (
+      {!started && (
+        <section className="story-intro relative z-50 flex min-h-screen items-center justify-center px-6">
+          <div className="story-intro-content">
+            <p>
+              Oi, tudo bem? Que bom ver você aqui. Eu preparei isso com muito carinho. Não é
+              muito, mas foi de coração, e eu não podia deixar o Luke de fora kkkk. Espero que você
+              goste. Aproveite :)
+            </p>
             <button
-              onClick={returnToStart}
-              className="absolute right-4 top-4 z-30 inline-flex items-center gap-2 rounded-md border border-[#f9c784]/45 bg-black/35 px-4 py-3 text-sm font-semibold text-[#fff8ef] shadow-lg backdrop-blur-sm transition hover:bg-black/50 sm:right-6 sm:top-6"
-              aria-label="Voltar ao inicio"
-              title="Voltar ao inicio"
+              type="button"
+              onClick={startExperience}
+              disabled={introLoading}
+              className="story-intro-button"
             >
-              <RotateCcw className="h-5 w-5" />
-              Voltar ao início
-            </button>
-          )}
-
-          <div className="relative z-10 grid w-full max-w-7xl items-center gap-5 lg:grid-cols-[minmax(0,1.18fr)_minmax(360px,0.82fr)]">
-            <div className="story-main-frame relative overflow-hidden rounded-xl border border-[#f9c784]/35 bg-[#f6dfbd] shadow-[0_24px_80px_rgba(0,0,0,0.46)]">
-              <img
-                key={activeFrame}
-                src={currentFrame.image}
-                alt="Avatar do homem"
-                className="relative z-10 h-full max-h-[82vh] min-h-[390px] w-full animate-story-photo-in object-contain object-bottom"
-              />
-              <img
-                src={dogAvatar}
-                alt="Cachorro"
-                className="pointer-events-none absolute bottom-[4%] left-[48%] z-20 w-[19%] min-w-24 max-w-44 drop-shadow-[0_16px_24px_rgba(0,0,0,0.28)]"
-              />
-            </div>
-
-            <article className="story-text-panel relative rounded-xl border border-[#f9c784]/35 bg-[#130d0a]/82 px-5 py-5 shadow-[0_22px_70px_rgba(0,0,0,0.42)] backdrop-blur-sm sm:px-7 sm:py-7 lg:max-h-[78vh] lg:overflow-y-auto">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#f9c784]/75">
-                {currentFrame.title} de {frames.length}
-              </p>
-              <div className="mt-5 space-y-4 text-[1.08rem] leading-relaxed text-[#fff8ef]/90 sm:text-xl">
-                {currentFrame.paragraphs.map((paragraph, index) => (
-                  <p key={`${paragraph}-${index}`}>{renderInlineMarkdown(paragraph)}</p>
-                ))}
-              </div>
-            </article>
-          </div>
-
-          <div className="absolute inset-x-4 bottom-5 z-20 flex items-center justify-between gap-4 sm:inset-x-8">
-            <button
-              onClick={showPreviousFrame}
-              disabled={isFirstFrame}
-              className="inline-flex h-12 min-w-12 items-center justify-center rounded-md border border-[#f9c784]/35 bg-black/35 px-4 text-[#fff8ef] shadow-lg backdrop-blur-sm transition hover:bg-black/50 disabled:pointer-events-none disabled:opacity-30"
-              aria-label="Bloco anterior"
-              title="Bloco anterior"
-            >
-              <ChevronLeft className="h-6 w-6" />
-              <span className="hidden sm:inline">Anterior</span>
-            </button>
-
-            <div className="rounded-full border border-[#f9c784]/25 bg-black/28 px-4 py-2 text-sm font-medium text-[#fff8ef]/80 backdrop-blur-sm">
-              {activeFrame + 1} / {frames.length}
-            </div>
-
-            <button
-              onClick={showNextFrame}
-              disabled={isLastFrame}
-              className="inline-flex h-12 min-w-12 items-center justify-center rounded-md border border-[#f9c784]/35 bg-black/35 px-4 text-[#fff8ef] shadow-lg backdrop-blur-sm transition hover:bg-black/50 disabled:pointer-events-none disabled:opacity-30"
-              aria-label="Proximo bloco"
-              title="Proximo bloco"
-            >
-              <span className="hidden sm:inline">Próximo</span>
-              <ChevronRight className="h-6 w-6" />
+              {introLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Carregando
+                </>
+              ) : (
+                "Começar"
+              )}
             </button>
           </div>
         </section>
       )}
+
+      <div className="story-page-bg absolute inset-0" />
+
+      <section className="story-stage relative z-10 flex min-h-screen items-center justify-center px-4 pb-36 pt-16 sm:pb-44">
+        <button
+          onClick={showPreviousFrame}
+          className="absolute left-4 z-20 hidden h-12 w-12 items-center justify-center rounded-md border border-[#f9c784]/25 bg-black/25 text-[#fff8ef] backdrop-blur-sm transition hover:bg-black/40 md:flex"
+          aria-label="Imagem anterior"
+          title="Imagem anterior"
+        >
+          <ChevronLeft className="h-7 w-7" />
+        </button>
+
+        <div className="story-layout w-full max-w-7xl">
+          <div className="story-main-frame story-scene relative overflow-hidden rounded-2xl border border-[#f9c784]/55 shadow-[0_24px_80px_rgba(52,26,14,0.28)]">
+            <img
+              key={activeFrame}
+              src={currentFrame.image}
+              alt="Avatar"
+              className="story-avatar h-full w-full animate-story-photo-in object-contain object-center"
+            />
+            <img
+              src={currentFrame.dogImage}
+              alt="Cachorro"
+              className="story-dog pointer-events-none absolute animate-story-photo-in drop-shadow-[0_18px_24px_rgba(74,38,18,0.32)]"
+            />
+          </div>
+
+          <aside className="story-text-panel">
+            <p className="story-text-kicker">Para você</p>
+            <h2>{currentFrame.title}</h2>
+            <p>{currentFrame.message}</p>
+          </aside>
+        </div>
+
+        <button
+          onClick={showNextFrame}
+          className="absolute right-4 z-20 hidden h-12 w-12 items-center justify-center rounded-md border border-[#f9c784]/25 bg-black/25 text-[#fff8ef] backdrop-blur-sm transition hover:bg-black/40 md:flex"
+          aria-label="Proxima imagem"
+          title="Proxima imagem"
+        >
+          <ChevronRight className="h-7 w-7" />
+        </button>
+      </section>
+
+      <HerFilmStrip />
     </main>
   );
 }
 
 export { App as SurpriseApp };
 
-function IntroScreen({ onStart }: { onStart: () => void }) {
+function HerFilmStrip() {
+  const strip = [...herFrames, ...herFrames];
+
   return (
-    <section className="relative z-10 flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(135deg,#f7f7f7_0%,#c8c8c8_45%,#f1f1f1_100%)] px-5 text-[#202020]">
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.55),transparent_28%,rgba(255,255,255,0.32)_62%,transparent)]" />
-      <div className="relative mx-auto flex max-w-2xl flex-col items-center text-center">
-        <p className="text-2xl font-semibold leading-snug sm:text-4xl">
-          Oi, tudo bem? Que bom que você veio aqui.
-        </p>
-        <p className="mt-5 text-lg leading-relaxed text-[#303030] sm:text-2xl">
-          Eu preparei essa surpresa. Não é muito, mas é de coração. Vamos começar?
-        </p>
-        <button
-          onClick={onStart}
-          className="mt-10 rounded-md bg-[#202020] px-12 py-5 text-2xl font-bold text-white shadow-[0_18px_42px_rgba(0,0,0,0.28)] transition hover:translate-y-[-2px] hover:bg-[#050505] sm:px-16 sm:py-6 sm:text-3xl"
-        >
-          Começar
-        </button>
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 overflow-hidden bg-black/18 py-4">
+      <div className="story-film-strip flex w-max gap-3 will-change-transform">
+        {strip.map((image, index) => (
+          <div
+            key={`${image}-${index}`}
+            className="h-24 w-36 shrink-0 overflow-hidden rounded-md border border-[#f9c784]/25 bg-[#f6dfbd] shadow-lg sm:h-32 sm:w-48"
+          >
+            <img src={image} alt="" className="h-full w-full object-contain" loading="eager" />
+          </div>
+        ))}
       </div>
-    </section>
+    </div>
   );
 }
 
-function LoadingScreen() {
-  return (
-    <section className="relative z-10 flex min-h-screen items-center justify-center bg-[#111111] px-5 text-center text-[#fff8ef]">
-      <div className="max-w-xl">
-        <p className="text-2xl font-semibold sm:text-4xl">Só um instante...</p>
-        <p className="mt-4 text-lg text-[#fff8ef]/72 sm:text-xl">
-          A música já começou. A surpresa entra junto com ela.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-function renderInlineMarkdown(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((part, index) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={`${part}-${index}`}>{part.slice(2, -2)}</strong>;
-    }
-    return part;
-  });
-}
