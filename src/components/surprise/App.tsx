@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Home, Loader2 } from "lucide-react";
 
 import avatarMain from "../../../Avatares/Avatar.png";
@@ -92,8 +92,9 @@ function stripMarkdownBold(text: string) {
 }
 
 function normalizePanelMessage(title: string, message: string) {
-  return stripMarkdownBold(`${title} ${message}`)
-    .replace(/\s+/g, " ")
+  return stripMarkdownBold(`${title}\n\n${message}`)
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
@@ -143,17 +144,72 @@ const herFrames = [
 
 export default function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const textPanelRef = useRef<HTMLElement | null>(null);
+  const messageCopyRef = useRef<HTMLParagraphElement | null>(null);
   const [activeFrame, setActiveFrame] = useState(0);
   const [started, setStarted] = useState(false);
   const [introLoading, setIntroLoading] = useState(false);
   const isFirstFrame = activeFrame === 0;
   const isLastFrame = activeFrame === storyFrames.length - 1;
+  const currentFrame = storyFrames[activeFrame];
+  const currentPanelMessage = normalizePanelMessage(currentFrame.title, currentFrame.message);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     audio.volume = 0.28;
   }, []);
+
+  useLayoutEffect(() => {
+    const panel = textPanelRef.current;
+    const copy = messageCopyRef.current;
+    if (!panel || !copy) return;
+
+    let animationFrame = 0;
+
+    function fitMessage() {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(() => {
+        if (!panel || !copy) return;
+
+        const panelStyle = window.getComputedStyle(panel);
+        const copyStyle = window.getComputedStyle(copy);
+        const maxSize = Number.parseFloat(copyStyle.getPropertyValue("--story-message-size"));
+        const minSize = Number.parseFloat(copyStyle.getPropertyValue("--story-message-min-size"));
+        const availableHeight =
+          panel.clientHeight -
+          Number.parseFloat(panelStyle.paddingTop) -
+          Number.parseFloat(panelStyle.paddingBottom);
+
+        let low = Number.isFinite(minSize) ? minSize : 11;
+        let high = Number.isFinite(maxSize) ? maxSize : 24;
+
+        for (let step = 0; step < 10; step += 1) {
+          const middle = (low + high) / 2;
+          copy.style.fontSize = `${middle}px`;
+
+          if (copy.scrollHeight <= availableHeight && copy.scrollWidth <= panel.clientWidth) {
+            low = middle;
+          } else {
+            high = middle;
+          }
+        }
+
+        copy.style.fontSize = `${Math.floor(low * 10) / 10}px`;
+      });
+    }
+
+    fitMessage();
+    const resizeObserver = new ResizeObserver(fitMessage);
+    resizeObserver.observe(panel);
+
+    void document.fonts?.ready.then(fitMessage);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      resizeObserver.disconnect();
+    };
+  }, [currentPanelMessage, started]);
 
   async function startExperience() {
     if (introLoading || started) return;
@@ -187,9 +243,6 @@ export default function App() {
     setStarted(true);
     setActiveFrame(0);
   }
-
-  const currentFrame = storyFrames[activeFrame];
-  const currentPanelMessage = normalizePanelMessage(currentFrame.title, currentFrame.message);
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#120d0a] text-[#fff8ef]">
@@ -268,8 +321,13 @@ export default function App() {
             />
           </div>
 
-          <aside className={`story-text-panel ${getPanelDensityClass(currentPanelMessage)}`}>
-            <p className="story-message-copy">{currentPanelMessage}</p>
+          <aside
+            ref={textPanelRef}
+            className={`story-text-panel ${getPanelDensityClass(currentPanelMessage)}`}
+          >
+            <p ref={messageCopyRef} className="story-message-copy">
+              {currentPanelMessage}
+            </p>
           </aside>
         </div>
 
