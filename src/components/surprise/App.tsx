@@ -343,57 +343,28 @@ export default function App() {
         )}
       </section>
 
-      <HerFilmStrips />
+      <HerFilmStrip />
     </main>
   );
 }
 
 export { App as SurpriseApp };
 
-function HerFilmStrips() {
+function HerFilmStrip() {
   const strip = [...herFrames, ...herFrames];
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden">
-      <div className="story-film-edge story-film-edge--top">
-        <div className="story-film-strip story-film-strip--horizontal">
-          {strip.map((image, index) => (
-            <FilmFrame key={`top-${image}-${index}`} image={image} />
-          ))}
-        </div>
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 overflow-hidden bg-black/18 py-4">
+      <div className="story-film-strip flex w-max gap-3 will-change-transform">
+        {strip.map((image, index) => (
+          <div
+            key={`${image}-${index}`}
+            className="h-24 w-36 shrink-0 overflow-hidden rounded-md border border-[#f9c784]/25 bg-[#f6dfbd] shadow-lg sm:h-32 sm:w-48"
+          >
+            <img src={image} alt="" className="h-full w-full object-contain" loading="eager" />
+          </div>
+        ))}
       </div>
-
-      <div className="story-film-edge story-film-edge--bottom">
-        <div className="story-film-strip story-film-strip--horizontal story-film-strip--reverse">
-          {strip.map((image, index) => (
-            <FilmFrame key={`bottom-${image}-${index}`} image={image} />
-          ))}
-        </div>
-      </div>
-
-      <div className="story-film-edge story-film-edge--left">
-        <div className="story-film-strip story-film-strip--vertical">
-          {strip.map((image, index) => (
-            <FilmFrame key={`left-${image}-${index}`} image={image} vertical />
-          ))}
-        </div>
-      </div>
-
-      <div className="story-film-edge story-film-edge--right">
-        <div className="story-film-strip story-film-strip--vertical story-film-strip--reverse">
-          {strip.map((image, index) => (
-            <FilmFrame key={`right-${image}-${index}`} image={image} vertical />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FilmFrame({ image, vertical = false }: { image: string; vertical?: boolean }) {
-  return (
-    <div className={vertical ? "story-film-frame story-film-frame--vertical" : "story-film-frame"}>
-      <img src={image} alt="" className="h-full w-full object-contain" loading="eager" />
     </div>
   );
 }
