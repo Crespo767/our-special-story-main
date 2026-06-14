@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Home, Loader2 } from "lucide-react";
 
 import avatarMain from "../../../Avatares/Avatar.png";
@@ -91,6 +91,19 @@ function stripMarkdownBold(text: string) {
   return text.replace(/\*\*/g, "");
 }
 
+function normalizePanelMessage(title: string, message: string) {
+  return stripMarkdownBold(`${title} ${message}`)
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getPanelDensityClass(text: string) {
+  if (text.length > 420) return "story-text-panel--extended";
+  if (text.length > 300) return "story-text-panel--long";
+  if (text.length > 190) return "story-text-panel--medium";
+  return "story-text-panel--short";
+}
+
 function removeBlockLabel(lines: string[]) {
   const firstLine = stripMarkdownBold(lines[0] ?? "").trim();
   return /^bloco\s+\d+$/i.test(firstLine) ? lines.slice(1) : lines;
@@ -176,6 +189,7 @@ export default function App() {
   }
 
   const currentFrame = storyFrames[activeFrame];
+  const currentPanelMessage = normalizePanelMessage(currentFrame.title, currentFrame.message);
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#120d0a] text-[#fff8ef]">
@@ -254,10 +268,8 @@ export default function App() {
             />
           </div>
 
-          <aside className="story-text-panel">
-            <p className="story-text-kicker">Para você</p>
-            <h2>{currentFrame.title}</h2>
-            <p>{renderMessage(currentFrame.message)}</p>
+          <aside className={`story-text-panel ${getPanelDensityClass(currentPanelMessage)}`}>
+            <p className="story-message-copy">{currentPanelMessage}</p>
           </aside>
         </div>
 
@@ -279,25 +291,6 @@ export default function App() {
 }
 
 export { App as SurpriseApp };
-
-function renderMessage(text: string) {
-  return text.split("\n").map((line, lineIndex) => (
-    <Fragment key={`${line}-${lineIndex}`}>
-      {lineIndex > 0 && <br />}
-      {renderInlineBold(line)}
-    </Fragment>
-  ));
-}
-
-function renderInlineBold(text: string) {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, index) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={`${part}-${index}`}>{part.slice(2, -2)}</strong>;
-    }
-
-    return <Fragment key={`${part}-${index}`}>{part}</Fragment>;
-  });
-}
 
 function HerFilmStrip() {
   const strip = [...herFrames, ...herFrames];
